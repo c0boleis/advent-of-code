@@ -1,8 +1,10 @@
 package com.edvent.ad2021
 
+import com.edvent.ad2021.AsRun.{addAcc, addAcc8}
+
 import java.time
 import java.time.Instant
-import scala.collection.mutable.{ArrayBuffer,Map}
+import scala.collection.mutable.{ArrayBuffer, Map}
 import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext
@@ -13,97 +15,70 @@ object AsRun {
 
   implicit val ec = ExecutionContext.global
 
-
-  var buffer = ArrayBuffer[Future[Int]]()
-
-  val referencesFull = List(6,5,4,3,2,1,0)
-  val references1 = List.concat(List(8,7),(0 to 300).map(value => referencesFull(value%7)))
-  val mapRes = Map[(Int,Int),Int]()
+  val numberOfDay = 256
 
   def main(args: Array[String]): Unit = {
     val i1 = Instant.now()
-    val resBuffer = ArrayBuffer.fill(256)(0)
     val filename = "src/main/resources/numbers_6.txt"
     val initLine = Source.fromFile(filename).getLines().next()
 
-    val references = Await.result(Future.sequence((0 to 8).map(p1)),10.minutes)
+    //    Await.result(p2(2),30.minutes)
+//    val references = Await.result(Future.sequence((1 to 5).map(p2)),10.minutes)
+    val references = (1 to 5).map(p21)
 
     val intNumbers = initLine.split(",").toList.map(_.toInt)
-    val res = intNumbers.map(references).sum
+    val res = intNumbers.map(value =>{references(value-1)}).sum
 
     val i2 = Instant.now()
     val delta = time.Duration.between(i1, i2).toMillis / 1000f
     println(s"Resultat: $res in ${delta}s")
   }
 
-  def r0(buffer : ArrayBuffer[Int]): Unit ={
-
-  }
-
-  def p1(number: Int): Future[Int] ={
-    var listTmp = List(number)
+  def p2(number: Int): Future[Long] = {
     Future {
       println(s"Process start: " + Thread.currentThread().getName)
-      for (index <- 1 to 80) {
+      var mapAcc = ArrayBuffer.fill[Long](numberOfDay + 1)(0)
+      mapAcc(0) = 1
+      addAcc(mapAcc, number)
+      for (index <- 1 to numberOfDay) {
         println(s"day: $index")
-        //decrement
-        var count6 = 0
-        listTmp = listTmp.map(value => if (value == 0) {
-          count6 = count6 + 1;
-          6
-        } else {
-          value - 1
-        })
-        listTmp = List.concat(listTmp, List.fill(count6)(8))
+        val numToAdd = mapAcc(index)
+        if (numToAdd > 0) {
+          addAcc8(mapAcc, index, numToAdd)
+        }
       }
-      listTmp.size
+      //      mapAcc(numberOfDay) = 0
+      mapAcc.sum
     }
   }
 
-  def process(listIn: List[Int], startIndex: Int): Future[Int] = {
-    if (listIn.size == 20) {
-      println("coucou")
-    }
-    var listTmp = listIn
-    val fs = ArrayBuffer[Future[Int]]()
-    Future {
-      println(s"Process start: " + Thread.currentThread().getName)
-      var continueIndex = -1
-      breakable {
-        for (index <- 1 to 256) {
-          println(s"day: $index")
-          //decrement
-          var count6 = 0
-          listTmp = listTmp.map(value => if (value == 0) {
-            count6 = count6 + 1;
-            6
-          } else {
-            value - 1
-          })
-          listTmp = List.concat(listTmp, List.fill(count6)(8))
-          if (listTmp.size > 300) {
-            continueIndex = index + 1
-            break
-          }
-        }
-      }
-      if (continueIndex > 0) {
-        val res = for {
-          res1 <- listTmp.grouped(20).map(value => process(value, continueIndex))
-        } yield {
-          res1
-        }
-        //val waitRes = Await.result(Future.sequence(res),10.minutes).sum
-        println(s"Process end: " + Thread.currentThread().getName)
-        0
-      } else {
-        println(s"Process end: " + Thread.currentThread().getName)
-        listTmp.size
-      }
 
+    def p21(number: Int): Long ={
+      println(s"Process start: " + Thread.currentThread().getName)
+      var mapAcc = ArrayBuffer.fill[Long](numberOfDay+1)(0)
+      mapAcc(0)=1
+      addAcc(mapAcc,number)
+      for (index <- 1 to numberOfDay) {
+        println(s"day: $index")
+        val numToAdd = mapAcc(index)
+        if(numToAdd>0) {
+          addAcc8(mapAcc,index,numToAdd)
+        }
+      }
+      //      mapAcc(numberOfDay) = 0
+      mapAcc.sum
     }
-    //val res  = Await.result(Future.sequence(fs.toList),30.seconds)
-    //Future.successful(listTmp.size)
+
+  def addAcc(buffer: ArrayBuffer[Long],n: Long): Unit ={
+    for (index <- n+1 to numberOfDay by 7) {
+      buffer(index.toInt) = 1
+    }
+  }
+
+  def addAcc8(buffer: ArrayBuffer[Long],start: Int,numToAdd: Long): Unit ={
+    for (index <- (start + 9) to numberOfDay by 7) {
+      buffer(index) = buffer(index) + numToAdd
+    }
   }
 
 }
